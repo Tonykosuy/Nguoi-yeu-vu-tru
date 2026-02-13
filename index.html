@@ -446,7 +446,7 @@
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 100;
+            z-index: 300;
             opacity: 0;
             pointer-events: none;
             transition: all 0.6s ease;
@@ -517,6 +517,66 @@
 
             100% {
                 transform: scale(1);
+            }
+        }
+
+        /* === Letter Overlay === */
+        #letter-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        #letter-overlay.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        #letter-content {
+            font-family: 'Dancing Script', cursive;
+            font-size: 1.5rem;
+            color: #ffe6f2;
+            text-shadow: 0 0 10px #ff0055;
+            white-space: pre-line;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(20, 0, 10, 0.6);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.15);
+            margin-bottom: 2rem;
+            display: none;
+            /* Hidden until typewriter starts */
+        }
+
+        /* Cursor effect */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
             }
         }
     </style>
@@ -605,15 +665,20 @@
             </table>
         </div>
 
+        <!-- NEW: Letter Overlay -->
+        <div id="letter-overlay">
+            <div id="letter-content"></div>
+        </div>
+
         <div id="nav-status" class="idle">NAV: IDLE</div>
         <div id="credits">© Designed by Nguyễn Trần Tiến Phúc</div>
         <div id="valentine-text">Happy Valentine ❤️</div>
 
         <!-- Navigation Link UI -->
         <div id="love-link-container">
-            <a href="https://love.tsonit.com/tran-huyen-khanh" id="love-link-btn" title="Gửi Lời Yêu">
+            <a href="javascript:void(0)" id="love-link-btn" title="Gửi Lời Yêu">
                 <span class="heart-icon">💖</span>
-                MỞ QUÀ TẶNG
+                <span id="love-btn-text">Vài lời của em</span>
                 <span class="heart-icon">✨</span>
             </a>
         </div>
@@ -1260,15 +1325,27 @@
             // QR Code & Text & Button Visibility
             const valText = document.getElementById('valentine-text');
             const loveBtn = document.getElementById('love-link-container');
+            // Reset overlay if switching modes?
+            if (newState !== State.HEART) {
+                letterOverlay.classList.remove('visible');
+            }
 
             if (newState === State.HEART) {
                 qrMesh.visible = true;
                 qrMesh.material.opacity = 0; // Reset for fade-in
                 valText.style.opacity = 1;
+                // Only show button if not already in final stage (to avoid resetting text if they come back?)
+                // Actually, if they switch modes and come back, we might want to reset? 
+                // For now, let's keep it simple. If they switch away, we reset the flow.
+                if (!isFinalStage) {
+                    loveBtnText.innerText = "Vài lời của em";
+                    isFinalStage = false;
+                }
                 loveBtn.classList.add('visible');
             } else {
                 qrMesh.visible = false;
                 valText.style.opacity = 0;
+                // Hide button when not in Heart mode
                 loveBtn.classList.remove('visible');
             }
 
@@ -1330,20 +1407,99 @@
 
         // --- Navigation Logic ---
         const loveLinkBtn = document.getElementById('love-link-btn');
+        const loveBtnText = document.getElementById('love-btn-text');
+        const letterOverlay = document.getElementById('letter-overlay');
+        const letterContent = document.getElementById('letter-content');
+        const envelopeContainer = document.getElementById('envelope-container');
+
+        const fullLetterText = `hí lu chị,
+hôm nay là valentine, hong biết chị có ai để đi chơi cùng chưa, cũng chẳng biết chị đã có để ý ai chưa. Hôm trước em hỏi thì chị bảo chưa có người yêu nên em đánh liều làm cái này hì hì.
+Thấy chị thích vũ trụ nên em học rùi làm cái này nèe, dù nhiều thứ chưa hoàn thiện nma hi vọng chị thông cảm nhé.
+Em để ý chị lâu ùi mà ngại quá.... Hi vọng sau tết có thể đi chơi với chị 1 hôm ạ!
+Trân trọng, Phúc`;
+
+        let isLetterOpen = false;
+        let isFinalStage = false;
+
         loveLinkBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const targetUrl = loveLinkBtn.href;
 
-            // Pause music before navigating
-            pauseMusic();
+            if (isFinalStage) {
+                // Final Navigation
+                const targetUrl = "https://love.tsonit.com/tran-huyen-khanh";
+                pauseMusic();
+                // Fade out effect
+                document.body.style.transition = 'opacity 0.8s ease';
+                document.body.style.opacity = '0';
+                setTimeout(() => {
+                    window.location.href = targetUrl;
+                }, 800);
+            } else {
+                // Open Letter Sequence
+                startLetterSequence();
+            }
+        });
 
-            // Optional: Fade out effect
-            document.body.style.transition = 'opacity 0.8s ease';
-            document.body.style.opacity = '0';
+        function startLetterSequence() {
+            // Hide the button temporarily or keep it? 
+            // Better to hide the main UI and show overlay
+            loveLinkBtn.style.opacity = '0';
+            loveLinkBtn.style.pointerEvents = 'none';
 
+            // Show Overlay
+            letterOverlay.classList.add('visible');
+            letterContent.style.display = 'block';
+
+            // Start Typewriter
+            typeWriter(fullLetterText, letterContent, () => {
+                // On Complete: Change Button Text and Show Button immediately
+                setTimeout(() => {
+                    loveBtnText.innerText = "Nhận quà tiếp nhé";
+                    isFinalStage = true;
+                    loveLinkBtn.style.opacity = '1';
+                    loveLinkBtn.style.pointerEvents = 'auto';
+                }, 500);
+            });
+        }
+
+        function typeWriter(text, element, callback) {
+            let i = 0;
+            element.innerHTML = '<span class="typing-cursor"></span>';
+            const speed = 40; // typing speed ms
+
+            function type() {
+                if (i < text.length) {
+                    // Handle newlines
+                    if (text.charAt(i) === '\n') {
+                        element.innerHTML = text.substring(0, i + 1).replace(/\n/g, '<br>') + '<span class="typing-cursor"></span>';
+                    } else {
+                        element.innerText = text.substring(0, i + 1);
+                        element.innerHTML += '<span class="typing-cursor"></span>';
+                    }
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    // Remove cursor
+                    element.innerHTML = element.innerHTML.replace('<span class="typing-cursor"></span>', '');
+                    if (callback) callback();
+                }
+            }
+            type();
+        }
+
+        // Envelope Click Event
+        envelopeContainer.addEventListener('click', () => {
+            // 1. Hide Overlay
+            letterOverlay.classList.remove('visible');
             setTimeout(() => {
-                window.location.href = targetUrl;
+                letterOverlay.style.display = 'none';
             }, 800);
+
+            // 2. Change Button Text and Show
+            loveBtnText.innerText = "Nhận quà tiếp nhé";
+            loveLinkBtn.style.opacity = '1';
+            loveLinkBtn.style.pointerEvents = 'auto';
+            isFinalStage = true;
         });
     </script>
 </body>
